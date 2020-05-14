@@ -10,5 +10,5 @@ include_directories(includes)
 include_directories(external/sdsl-lite/include)
 
 add_subdirectory(src)
-#add_subdirectory(tests)
+add_subdirectory(tests)
 add_subdirectory(executables)

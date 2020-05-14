@@ -21,3 +21,7 @@ public:
     virtual ~GTestFixture() {
     }
 };
+
+TEST_F(GTestFixture, test) {
+
+}
