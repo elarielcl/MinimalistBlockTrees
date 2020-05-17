@@ -1,5 +1,4 @@
 #include <pointer_based/blocks/LeafBlock.h>
-#include <pointer_based/blocks/InternalBlock.h>
 #include <unordered_set>
 #include <fstream>
 #include "gtest/gtest.h"
