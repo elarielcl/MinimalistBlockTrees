@@ -9,7 +9,5 @@ endforeach()
 
 foreach( exe ${project_EXECUTABLES} )
     target_link_libraries( ${exe} blocktree )
-    target_link_libraries( ${exe} ${CMAKE_SOURCE_DIR}/external/sdsl-lite/build/lib/libsdsl.a )
-    target_link_libraries( ${exe} ${CMAKE_SOURCE_DIR}/external/sdsl-lite/build/lib/libdivsufsort.a )
-    target_link_libraries( ${exe} ${CMAKE_SOURCE_DIR}/external/sdsl-lite/build/lib/libdivsufsort64.a )
+    target_link_libraries( ${exe} sdsl )
 endforeach()
