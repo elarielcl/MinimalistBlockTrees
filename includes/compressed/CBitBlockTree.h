@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 
-class CBlockTree {
+class CBitBlockTree {
 public:
     int r_; // Arity
     int first_level_length_;
@@ -18,25 +18,24 @@ public:
     std::vector<sdsl::bit_vector*> bt_bv_; // 1 when is Internal Block
     std::vector<sdsl::rank_support_v<1>*> bt_bv_rank_;
     std::vector<sdsl::int_vector<>*> bt_offsets_;
-    sdsl::int_vector<>* leaf_string_;
+    sdsl::bit_vector* leaf_bv_;
 
 
-    sdsl::int_vector<>* alphabet_;
-    std::unordered_map<char,int> mapping_;
+
+    sdsl::int_vector<>* bt_first_level_prefix_ranks_;
+
+    std::vector<sdsl::int_vector<>*> bt_ranks_;
+    std::vector<sdsl::int_vector<>*> bt_second_ranks_;
 
 
-    std::unordered_map<int,sdsl::int_vector<>*> bt_first_level_prefix_ranks_;
-
-    std::unordered_map<int,std::vector<sdsl::int_vector<>*>> bt_ranks_;
-    std::unordered_map<int,std::vector<sdsl::int_vector<>*>> bt_second_ranks_;
-
-
-    CBlockTree(BlockTree*);
-    virtual ~CBlockTree();
+    CBitBlockTree(BlockTree*, int);
+    virtual ~CBitBlockTree();
 
     int access(int);
-    int rank(int, int);
-    int select(int, int);
+    int rank_0(int);
+    int rank_1(int);
+    int select_0(int);
+    int select_1(int);
 
     int size();
     int get_partial_size();

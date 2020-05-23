@@ -1,6 +1,6 @@
 #include <pointer_based/blocks/LeafBlock.h>
 #include <unordered_set>
-#include <compressed/CBlockTree.h>
+#include <compressed/CBitBlockTree.h>
 #include "gtest/gtest.h"
 
 #include "pointer_based/BlockTree.h"
@@ -25,20 +25,20 @@ BlockTree* block_tree_without_cleanning(int r, int max_leaf_length, std::string 
 }
 
 
-BlockTree* heuristic_block_tree(int r, int max_leaf_length, std::string input) {
+BlockTree* heuristic_bit_block_tree(int r, int max_leaf_length, std::string input) {
     BlockTree* block_tree_ = new BlockTree(input, r, max_leaf_length);
     block_tree_->process_back_pointers_heuristic();
     return block_tree_;
 }
 
 
-class CBlockTreeFixture : public ::testing::TestWithParam<::testing::tuple<int, int, std::string, CreateBlockTreeFunc*>> {
+class CBitBlockTreeFixture : public ::testing::TestWithParam<::testing::tuple<int, int, std::string, CreateBlockTreeFunc*>> {
 protected:
     virtual void TearDown() {
         delete block_tree_;
         delete block_tree_rs_;
-        delete c_block_tree_;
-        delete c_block_tree_rs_;
+        delete c_bit_block_tree_;
+        delete c_bit_block_tree_rs_;
     }
 
     virtual void SetUp() {
@@ -50,8 +50,9 @@ protected:
         std::stringstream buffer;
         buffer << t.rdbuf();
         input_= buffer.str();
+        one_symbol = input_[0];
         block_tree_ = (*create_blocktree)(r_ , max_leaf_length_, input_);
-        c_block_tree_ = new CBlockTree(block_tree_);
+        c_bit_block_tree_ = new CBitBlockTree(block_tree_, one_symbol);
 
         block_tree_rs_ = (*create_blocktree)(r_ , max_leaf_length_, input_);
 
@@ -63,43 +64,52 @@ protected:
             block_tree_rs_->add_rank_select_support(c);
         }
 
-        for (int i = 0; i<input_.size(); ++i)
+        for (int i = 0; i<input_.size(); ++i) {
+            if (input_[i] == one_symbol) {
+                selects_1.push_back(i);
+            } else {
+                selects_0.push_back(i);
+            }
             characters_[input_[i]].push_back(i);
+        }
 
-        c_block_tree_rs_ = new CBlockTree(block_tree_rs_);
+        c_bit_block_tree_rs_ = new CBitBlockTree(block_tree_rs_, input_[0]);
     }
 
 public:
     BlockTree* block_tree_;
     BlockTree* block_tree_rs_;
 
-    CBlockTree* c_block_tree_;
-    CBlockTree* c_block_tree_rs_;
+    CBitBlockTree* c_bit_block_tree_;
+    CBitBlockTree* c_bit_block_tree_rs_;
 
     std::string input_;
+    int one_symbol;
     int r_;
     int max_leaf_length_;
     std::unordered_map<int,std::vector<int>> characters_; // Characters in the input and its select results
+    std::vector<int> selects_1;
+    std::vector<int> selects_0;
 
-    CBlockTreeFixture() : ::testing::TestWithParam<::testing::tuple<int, int, std::string, CreateBlockTreeFunc*>>() {
+    CBitBlockTreeFixture() : ::testing::TestWithParam<::testing::tuple<int, int, std::string, CreateBlockTreeFunc*>>() {
     }
 
-    virtual ~CBlockTreeFixture() {
+    virtual ~CBitBlockTreeFixture() {
     }
 };
 
-INSTANTIATE_TEST_CASE_P(PCBlockTreeTest,
-                        CBlockTreeFixture,
+INSTANTIATE_TEST_CASE_P(PCBitBlockTreeTest,
+                        CBitBlockTreeFixture,
                         Combine(Values(2),
                                 Values(4),
-                                Values("../../../tests/data/as", "../../../tests/data/dna", "../../../tests/data/dna.par", "../../../tests/data/einstein"),
-                                Values(&block_tree, &block_tree_without_cleanning, &heuristic_block_tree)));
+                                Values("../../../tests/data/dna.par"),
+                                Values(&block_tree, &block_tree_without_cleanning, &heuristic_bit_block_tree)));
 
 
 // This test checks if the fields and
 // number_of_levels_ are correct
-TEST_P(CBlockTreeFixture, general_fields_check) {
-    EXPECT_EQ(c_block_tree_->r_, r_);
+TEST_P(CBitBlockTreeFixture, general_fields_check) {
+    EXPECT_EQ(c_bit_block_tree_->r_, r_);
     auto iterator = block_tree_->levelwise_iterator();
     std::vector<Block*> level;
     bool contains_back_block = false;
@@ -111,14 +121,14 @@ TEST_P(CBlockTreeFixture, general_fields_check) {
         }
         if (contains_back_block) break;
     }
-    EXPECT_EQ(iterator.size()-i, c_block_tree_->number_of_levels_);
+    EXPECT_EQ(iterator.size()-i, c_bit_block_tree_->number_of_levels_);
 
 }
 
-// This test checks if the CBlockTree has the same
+// This test checks if the CBitBlockTree has the same
 // structure that its correspondent BlockTree
 // in particular the bt_bv field is checked
-TEST_P(CBlockTreeFixture, bt_bv_field_check) {
+TEST_P(CBitBlockTreeFixture, bt_bv_field_check) {
     auto iterator = block_tree_->levelwise_iterator();
     std::vector<Block*> level;
     bool contains_back_block = false;
@@ -131,9 +141,9 @@ TEST_P(CBlockTreeFixture, bt_bv_field_check) {
         if (contains_back_block) break;
     }
 
-    for (int j = 0; j < c_block_tree_->number_of_levels_-1; ++j) {
+    for (int j = 0; j < c_bit_block_tree_->number_of_levels_-1; ++j) {
         level = iterator[i + j];
-        auto level_bt_bv = *(c_block_tree_->bt_bv_[j]);
+        auto level_bt_bv = *(c_bit_block_tree_->bt_bv_[j]);
         EXPECT_EQ(level.size(), level_bt_bv.size());
         for (int k = 0; k < level.size(); ++k) {
             Block *b = level[k];
@@ -145,10 +155,10 @@ TEST_P(CBlockTreeFixture, bt_bv_field_check) {
 }
 
 
-// This test checks if the CBlockTree has the same
+// This test checks if the CBitBlockTree has the same
 // structure that its correspondent BlockTree
 // in particular the bt_offsets field is checked
-TEST_P(CBlockTreeFixture, bt_offsets_field_check) {
+TEST_P(CBitBlockTreeFixture, bt_offsets_field_check) {
     auto iterator = block_tree_->levelwise_iterator();
     std::vector<Block*> level;
     bool contains_back_block = false;
@@ -161,9 +171,9 @@ TEST_P(CBlockTreeFixture, bt_offsets_field_check) {
         if (contains_back_block) break;
     }
 
-    for (int j = 0; j < c_block_tree_->number_of_levels_-1; ++j) {
+    for (int j = 0; j < c_bit_block_tree_->number_of_levels_-1; ++j) {
         level = iterator[i+j];
-        auto level_bt_offsets = *(c_block_tree_->bt_offsets_[j]);
+        auto level_bt_offsets = *(c_bit_block_tree_->bt_offsets_[j]);
 
         int max_size_level = level.front()->length();
         int l = 0;
@@ -179,31 +189,37 @@ TEST_P(CBlockTreeFixture, bt_offsets_field_check) {
 
 
 
-// This test checks if the CBlockTree has the same
+// This test checks if the CBitBlockTree has the same
 // structure that its correspondent BlockTree
 // in particular the bt_leaf_string field is checked
-TEST_P(CBlockTreeFixture, bt_leaf_string_field_check) {
+TEST_P(CBitBlockTreeFixture, bt_leaf_string_field_check) {
     auto iterator = block_tree_->levelwise_iterator();
-    std::string leaf_string = "";
+    std::string leaf_bv = "";
     for (Block* b : iterator.back()) {
-        leaf_string += b->represented_string();
+        for (char c : b->represented_string()) {
+            if (c == one_symbol) {
+                leaf_bv += "1";
+            } else {
+                leaf_bv += "0";
+            }
+        }
     }
 
-    std::string leaf_c_string = "";
-    for (int i : (*c_block_tree_->leaf_string_)) {
-        leaf_c_string += (char)(*c_block_tree_->alphabet_)[i];
+    std::string leaf_c_bv = "";
+    for (int i : (*c_bit_block_tree_->leaf_bv_)) {
+        leaf_c_bv += i ? "1" : "0";
     }
 
-    EXPECT_EQ(leaf_c_string, leaf_string);
+    EXPECT_EQ(leaf_c_bv, leaf_bv);
 }
 
 
 
 
-// This test checks if the CBlockTree has the same
+// This test checks if the CBitBlockTree has the same
 // structure that its correspondent BlockTree
 // in particular the bt_second_ranks field are checked
-TEST_P(CBlockTreeFixture, bt_second_ranks_field_check) {
+TEST_P(CBitBlockTreeFixture, bt_second_ranks_field_check) {
     auto iterator = block_tree_rs_->levelwise_iterator();
     std::vector<Block*> level;
     bool contains_back_block = false;
@@ -216,28 +232,27 @@ TEST_P(CBlockTreeFixture, bt_second_ranks_field_check) {
         if (contains_back_block) break;
     }
 
-    for (int j = 0; j < c_block_tree_->number_of_levels_-1; ++j) {
+    for (int j = 0; j < c_bit_block_tree_rs_->number_of_levels_-1; ++j) {
         level = iterator[i+j];
-        for (auto pair : characters_) {
-            int c = pair.first;
-            auto level_bt_second_ranks = *(c_block_tree_rs_->bt_second_ranks_[c][j]);
 
-            int l = 0;
-            for (Block *b: level) {
-                if (dynamic_cast<BackBlock *>(b)) {
-                    EXPECT_EQ(level_bt_second_ranks[l], b->second_ranks_[c]) ;
-                    ++l;
-                }
+        auto level_bt_second_ranks = *(c_bit_block_tree_rs_->bt_second_ranks_[j]);
+
+        int l = 0;
+        for (Block *b: level) {
+            if (dynamic_cast<BackBlock *>(b)) {
+                EXPECT_EQ(level_bt_second_ranks[l], b->second_ranks_[one_symbol]) ;
+                ++l;
             }
-            EXPECT_EQ(l, level_bt_second_ranks.size());
         }
+        EXPECT_EQ(l, level_bt_second_ranks.size());
     }
 }
 
-// This test checks if the CBlockTree has the same
+
+// This test checks if the CBitBlockTree has the same
 // structure that its correspondent BlockTree
 // in particular the bt_ranks_ is checked
-TEST_P(CBlockTreeFixture, bt_bv_ranks_prefix_check) {
+TEST_P(CBitBlockTreeFixture, bt_bv_ranks_prefix_check) {
     auto iterator = block_tree_rs_->levelwise_iterator();
     std::vector<Block*> level;
     bool contains_back_block = false;
@@ -251,40 +266,35 @@ TEST_P(CBlockTreeFixture, bt_bv_ranks_prefix_check) {
     }
 
 
-    for (auto pair : characters_) {
-        int c = pair.first;
-        level = iterator[i];
-        auto level_bt_ranks = *(c_block_tree_rs_->bt_ranks_[c][0]);
+
+    level = iterator[i];
+    auto level_bt_ranks = *(c_bit_block_tree_rs_->bt_ranks_[0]);
+    EXPECT_EQ(level.size(), level_bt_ranks.size());
+
+    for (int k = 0; k < level.size(); ++k) {
+        Block* b = level[k];
+        EXPECT_EQ(b->ranks_[one_symbol], level_bt_ranks[k]);
+    }
+
+
+    for (int j = 1; j < c_bit_block_tree_->number_of_levels_; ++j) {
+        level = iterator[i + j];
+        auto level_bt_ranks = *(c_bit_block_tree_rs_->bt_ranks_[j]);
         EXPECT_EQ(level.size(), level_bt_ranks.size());
 
         for (int k = 0; k < level.size(); ++k) {
             Block* b = level[k];
-            EXPECT_EQ(b->ranks_[c], level_bt_ranks[k]);
-        }
-    }
-
-
-    for (int j = 1; j < c_block_tree_->number_of_levels_; ++j) {
-        for (auto pair : characters_) {
-            int c = pair.first;
-            level = iterator[i + j];
-            auto level_bt_ranks = *(c_block_tree_rs_->bt_ranks_[c][j]);
-            EXPECT_EQ(level.size(), level_bt_ranks.size());
-
-            for (int k = 0; k < level.size(); ++k) {
-                Block* b = level[k];
-                EXPECT_EQ(b->ranks_[c], level_bt_ranks[k]);
-            }
+            EXPECT_EQ(b->ranks_[one_symbol], level_bt_ranks[k]);
         }
     }
 }
 
 
-// This test checks if the CBlockTree has the same
+// This test checks if the CBitBlockTree has the same
 // structure that its correspondent BlockTree
 // in particular the first level for bt_prefix_ranks_,
 // is checked
-TEST_P(CBlockTreeFixture, bt_bv_first_level_prefix_ranks_check) {
+TEST_P(CBitBlockTreeFixture, bt_bv_first_level_prefix_ranks_check) {
     auto iterator = block_tree_rs_->levelwise_iterator();
     std::vector<Block*> level;
     bool contains_back_block = false;
@@ -297,60 +307,69 @@ TEST_P(CBlockTreeFixture, bt_bv_first_level_prefix_ranks_check) {
         if (contains_back_block) break;
     }
 
+    level = iterator[i];
+    auto first_level_bt_prefix_ranks = *(c_bit_block_tree_rs_->bt_first_level_prefix_ranks_);
+    int r  = 0;
 
-    for (auto pair : characters_) {
-        int c = pair.first;
-        level = iterator[i];
-        auto first_level_bt_prefix_ranks = *(c_block_tree_rs_->bt_first_level_prefix_ranks_[c]);
-        int r  = 0;
-
-        EXPECT_EQ(first_level_bt_prefix_ranks.size(), level.size());
-        for (int k = 0; k < level.size(); ++k) {
-            EXPECT_EQ(r, first_level_bt_prefix_ranks[k]);
-            r += level[k]->ranks_[c];
-        }
+    EXPECT_EQ(first_level_bt_prefix_ranks.size(), level.size());
+    for (int k = 0; k < level.size(); ++k) {
+        EXPECT_EQ(r, first_level_bt_prefix_ranks[k]);
+        r += level[k]->ranks_[one_symbol];
     }
 
 }
 
 
-// This test checks if the mapping and alphabet fields are correct
-TEST_P(CBlockTreeFixture, bt_mapping_alphabet_field_check) {
-    EXPECT_EQ(c_block_tree_rs_->mapping_.size(), characters_.size());
-    EXPECT_EQ(c_block_tree_rs_->alphabet_->size(), characters_.size());
-    for (int i = 0; i < c_block_tree_->alphabet_->size(); ++i) {
-        EXPECT_EQ(c_block_tree_rs_->mapping_[(*c_block_tree_->alphabet_)[i]], i);
-    }
-}
 
 
-// This test checks if the CBlockTree represents its input
+// This test checks if the CBitBlockTree represents its input
 // string and if the access method is correct
-TEST_P(CBlockTreeFixture, input_integrity_or_access_check) {
-    for (int i = 0; i < input_.size(); ++i)
-        EXPECT_EQ(c_block_tree_->access(i), input_[i]);
-}
-
-// This test checks the rank method for every character
-// and position in the input
-TEST_P(CBlockTreeFixture, ranks_check) {
-    for (auto pair : characters_) {
-        int c = pair.first;
-        int r = 0;
-        for (int i = 0; i < input_.size(); ++i) {
-            if (input_[i] == c) ++r;
-            EXPECT_EQ(c_block_tree_rs_->rank(c, i), r);
+TEST_P(CBitBlockTreeFixture, input_integrity_or_access_check) {
+    for (int i = 0; i < input_.size(); ++i) {
+        if (input_[i] == one_symbol) {
+            EXPECT_EQ(c_bit_block_tree_->access(i), 1);
+        } else {
+            EXPECT_EQ(c_bit_block_tree_->access(i), 0);
         }
     }
 }
 
 
-// This test checks the select method for every character
+// This test checks the rank_1 method for every character
+// and position in the input
+TEST_P(CBitBlockTreeFixture, ranks_1_check) {
+    int r = 0;
+    for (int i = 0; i < input_.size(); ++i) {
+        if (input_[i] == one_symbol) ++r;
+        EXPECT_EQ(c_bit_block_tree_rs_->rank_1(i), r);
+    }
+}
+
+
+// This test checks the rank_0 method for every character
+// and position in the input
+TEST_P(CBitBlockTreeFixture, ranks_0_check) {
+    int r = 0;
+    for (int i = 0; i < input_.size(); ++i) {
+        if (input_[i] != one_symbol) ++r;
+        EXPECT_EQ(c_bit_block_tree_rs_->rank_0(i), r);
+    }
+}
+
+
+// This test checks the select_1 method for every character
 // and rank
-TEST_P(CBlockTreeFixture, selects_check) {
-    for (auto pair : characters_) {
-        int c  = pair.first;
-        for (int j = 1; j<=pair.second.size(); ++j)
-            EXPECT_EQ(c_block_tree_rs_->select(c, j), pair.second[j-1]);
+TEST_P(CBitBlockTreeFixture, selects_1_check) {
+    for (int j = 1; j<=selects_1.size(); ++j) {
+        EXPECT_EQ(c_bit_block_tree_rs_->select_1(j), selects_1[j-1]);
+    }
+}
+
+
+// This test checks the select_0 method for every character
+// and rank
+TEST_P(CBitBlockTreeFixture, selects_0_check) {
+    for (int j = 1; j<=selects_0.size(); ++j) {
+        EXPECT_EQ(c_bit_block_tree_rs_->select_0(j), selects_0[j-1]);
     }
 }

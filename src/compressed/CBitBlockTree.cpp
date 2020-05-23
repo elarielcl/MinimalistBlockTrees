@@ -1,7 +1,7 @@
-#include <compressed/CBlockTree.h>
+#include <compressed/CBitBlockTree.h>
 #include <unordered_set>
 
-CBlockTree::CBlockTree(BlockTree * bt) : r_(bt->r_) {
+CBitBlockTree::CBitBlockTree(BlockTree * bt, int one_symbol) : r_(bt->r_) {
     std::vector<Block*> first_level = {bt->root_block_};
     bool is_first_level = false;
     while (!is_first_level) {
@@ -12,31 +12,28 @@ CBlockTree::CBlockTree(BlockTree * bt) : r_(bt->r_) {
         first_level = bt->next_level(first_level);
     }
 
-    std::unordered_map<int,int> first_level_prefix_ranks_;
-    std::unordered_map<int,sdsl::int_vector<>*> first_level_prefix_ranks;
-    std::unordered_map<int,sdsl::int_vector<>*> first_level_ranks;
+    int first_level_prefix_ranks_ = 0;
+    sdsl::int_vector<>* first_level_prefix_ranks = new sdsl::int_vector<>(first_level.size());;
+    sdsl::int_vector<>* first_level_ranks = new sdsl::int_vector<>(first_level.size());;
 
-    for (auto pair: first_level[0]->ranks_) { //auto &
-        first_level_prefix_ranks[pair.first] = new sdsl::int_vector<>(first_level.size());
-        first_level_ranks[pair.first] = new sdsl::int_vector<>(first_level.size());
-    }
+
     for (int i = 0; i < first_level.size(); ++i) {
-        for (auto pair: first_level_prefix_ranks_)
-            (*first_level_prefix_ranks[pair.first])[i] = pair.second;
+        (*first_level_prefix_ranks)[i] = first_level_prefix_ranks_;
 
         for (auto pair: first_level[i]->ranks_) {
-            (*first_level_ranks[pair.first])[i] = first_level[i]->ranks_[pair.first];
-            first_level_prefix_ranks_[pair.first] = first_level_prefix_ranks_[pair.first] + first_level[i]->ranks_[pair.first];
+            if (pair.first == one_symbol) {
+                (*first_level_ranks)[i] = first_level[i]->ranks_[pair.first];
+                first_level_prefix_ranks_ = first_level_prefix_ranks_ + first_level[i]->ranks_[pair.first];
+            }
         }
     }
-    for (auto pair : first_level_prefix_ranks) {
-        sdsl::util::bit_compress(*(pair.second));
-        bt_first_level_prefix_ranks_[pair.first] = pair.second;
-    }
-    for (auto pair : first_level_ranks) {
-        sdsl::util::bit_compress(*(pair.second));
-        bt_ranks_[pair.first].push_back(pair.second);
-    }
+
+    sdsl::util::bit_compress(*(first_level_prefix_ranks));
+    bt_first_level_prefix_ranks_ = first_level_prefix_ranks;
+
+    sdsl::util::bit_compress(*(first_level_ranks));
+    bt_ranks_.push_back(first_level_ranks);
+
 
     first_level_length_ = first_level[0]->length();
     number_of_levels_ = 0;
@@ -47,11 +44,7 @@ CBlockTree::CBlockTree(BlockTree * bt) : r_(bt->r_) {
     while (next_level.size() != 0) {
         sdsl::bit_vector* current_level_bv = new sdsl::bit_vector(current_level.size() ,0);
 
-        std::unordered_map<int,sdsl::int_vector<>*> next_level_ranks;
-
-        for (auto pair: next_level[0]->ranks_) {
-            next_level_ranks[pair.first] = new sdsl::int_vector<>(next_level.size());
-        }
+        sdsl::int_vector<>* next_level_ranks = new sdsl::int_vector<>(next_level.size());
 
         int number_of_leaves = 0;
         int current_length = current_level.front()->length();
@@ -69,23 +62,24 @@ CBlockTree::CBlockTree(BlockTree * bt) : r_(bt->r_) {
 
         for (int i = 0; i < next_level.size(); ++i) {
             for (auto pair: next_level[i]->ranks_) {
-                (*next_level_ranks[pair.first])[i] = pair.second;
+                if (pair.first == one_symbol) {
+                    (*next_level_ranks)[i] = pair.second;
+                }
             }
         }
 
 
         sdsl::int_vector<>* current_level_offsets = new sdsl::int_vector<>(number_of_leaves);
 
-        std::unordered_map<int,sdsl::int_vector<>*> current_level_second_ranks;
-        for (auto pair: current_level[0]->ranks_) {
-            current_level_second_ranks[pair.first] = new sdsl::int_vector<>(number_of_leaves);
-        }
+        sdsl::int_vector<>* current_level_second_ranks = new sdsl::int_vector<>(number_of_leaves);
 
         int j = 0;
         for (int i = 0; i < current_level.size(); ++i) {
             if (!(*current_level_bv)[i]) {
                 for (auto pair: current_level[i]->second_ranks_) {
-                    (*current_level_second_ranks[pair.first])[j] = pair.second;
+                    if (pair.first == one_symbol) {
+                        (*current_level_second_ranks)[j] = pair.second;
+                    }
                 }
 
                 (*current_level_offsets)[j++] = current_level[i]->first_block_->level_index_ * current_length + current_level[i]->offset_;
@@ -95,15 +89,12 @@ CBlockTree::CBlockTree(BlockTree * bt) : r_(bt->r_) {
         sdsl::util::bit_compress(*current_level_offsets);
         bt_offsets_.push_back(current_level_offsets);
 
-        for (auto pair : next_level_ranks) {
-            sdsl::util::bit_compress(*(pair.second));
-            (bt_ranks_[pair.first]).push_back(pair.second);
-        }
+        sdsl::util::bit_compress(*(next_level_ranks));
+        bt_ranks_.push_back(next_level_ranks);
 
-        for (auto pair : current_level_second_ranks) {
-            sdsl::util::bit_compress(*(pair.second));
-            (bt_second_ranks_[pair.first]).push_back(pair.second);
-        }
+        sdsl::util::bit_compress(*(current_level_second_ranks));
+        bt_second_ranks_.push_back(current_level_second_ranks);
+
 
         bt_bv_.push_back(current_level_bv);
         sdsl::rank_support_v<1>* current_level_bv_rank = new sdsl::rank_support_v<1>(current_level_bv);
@@ -123,29 +114,19 @@ CBlockTree::CBlockTree(BlockTree * bt) : r_(bt->r_) {
         leaf_string += b->represented_string();
     }
 
-    std::unordered_set<char> alphabet;
-    for (char c : leaf_string) {
-        alphabet.insert(c);
+
+    leaf_bv_ = new sdsl::bit_vector (leaf_string.size());
+
+    for (int i = 0; i<leaf_bv_->size(); ++i) {
+        if (leaf_string[i] == one_symbol) {
+            (*leaf_bv_)[i] = 1;
+        } else {
+            (*leaf_bv_)[i] = 0;
+        }
     }
-    alphabet_ = new sdsl::int_vector<>(alphabet.size());
-    int counter = 0;
-    for (char c : alphabet){
-        mapping_[c] = counter;
-        (*alphabet_)[counter++] = c;
-    }
-    sdsl::util::bit_compress(*alphabet_);
-
-
-    leaf_string_ = new sdsl::int_vector<>(leaf_string.size());
-
-    for (int i = 0; i<leaf_string_->size(); ++i) {
-        (*leaf_string_)[i] = mapping_[leaf_string[i]];
-    }
-
-    sdsl::util::bit_compress(*leaf_string_);
 }
 
-CBlockTree::~CBlockTree() {
+CBitBlockTree::~CBitBlockTree() {
 
     for (sdsl::bit_vector* bv : bt_bv_) {
         delete bv;
@@ -159,28 +140,22 @@ CBlockTree::~CBlockTree() {
         delete offsets;
     }
 
-    delete leaf_string_;
-    delete alphabet_;
+    delete leaf_bv_;
 
-    for (auto pair : bt_first_level_prefix_ranks_) {
-        delete pair.second;
+    if (bt_first_level_prefix_ranks_)
+        delete bt_first_level_prefix_ranks_;
+
+    for (auto ranks : bt_ranks_) {
+        delete ranks;
     }
 
-    for (auto pair : bt_ranks_) {
-        for (sdsl::int_vector<>* ranks : pair.second) {
-            delete ranks;
-        }
-    }
-
-    for (auto pair : bt_second_ranks_) {
-        for (sdsl::int_vector<> *ranks : pair.second) {
-            delete ranks;
-        }
+    for (auto ranks : bt_second_ranks_) {
+        delete ranks;
     }
 }
 
 
-int CBlockTree::access(int i) {
+int CBitBlockTree::access(int i) {
 
     int current_block = i/first_level_length_;
     int current_length = first_level_length_;
@@ -203,21 +178,21 @@ int CBlockTree::access(int i) {
             }
         }
     }
-    return (*alphabet_)[(*leaf_string_)[i+current_block*current_length]];
+    return (*leaf_bv_)[i+current_block*current_length];
 }
 
 
-int CBlockTree::rank(int c, int i) {
+int CBitBlockTree::rank_1(int i) {
 
-    auto& ranks = bt_ranks_[c];
-    auto& second_ranks = bt_second_ranks_[c];
+    auto& ranks = bt_ranks_;
+    auto& second_ranks = bt_second_ranks_;
 
     int current_block = i/first_level_length_;
     int current_length = first_level_length_;
     i = i-current_block*current_length;
     int level = 0;
 
-    int r = (*bt_first_level_prefix_ranks_[c])[current_block];
+    int r = (*bt_first_level_prefix_ranks_)[current_block];
     while (level < number_of_levels_-1) {
         if ((*bt_bv_[level])[current_block]) { // Case InternalBlock
             current_length /= r_;
@@ -246,20 +221,24 @@ int CBlockTree::rank(int c, int i) {
     }
 
     i  += current_block*current_length;
-    int d = mapping_[c];
     for (int j = current_block*current_length; j <= i; ++j) {
-        if ((*leaf_string_)[j] == d) ++r;
+        if ((*leaf_bv_)[j] == 1) ++r;
     }
 
     return r;
 }
 
 
-int CBlockTree::select(int c, int k) {
+int CBitBlockTree::rank_0(int i) {
+    return i-rank_1(i)+1;
+}
 
-    auto& ranks = bt_ranks_[c];
-    auto& second_ranks = bt_second_ranks_[c];
-    auto& first_level_prefix_ranks = bt_first_level_prefix_ranks_[c];
+
+int CBitBlockTree::select_1(int k) {
+
+    auto& ranks = bt_ranks_;
+    auto& second_ranks = bt_second_ranks_;
+    auto& first_level_prefix_ranks = bt_first_level_prefix_ranks_;
 
 
     int current_block = (k-1)/first_level_length_;
@@ -292,7 +271,7 @@ int CBlockTree::select(int c, int k) {
             int child = firstChild;
             int r = (*ranks[level+1])[child];
             int last_possible_child = (firstChild + r_-1 > (*ranks[level+1]).size()-1) ?  (*ranks[level+1]).size()-1 : firstChild + r_-1;
-            while ( child < last_possible_child && k > r) { //Border conditions?
+            while ( child < last_possible_child && k > r) {
                 ++child;
                 r+= (*ranks[level+1])[child];
             }
@@ -318,20 +297,90 @@ int CBlockTree::select(int c, int k) {
         }
     }
 
-    int d = mapping_[c];
     for (int j = current_block*current_length;  ; ++j) {
-        if ((*leaf_string_)[j] == d) --k;
+        if ((*leaf_bv_)[j] == 1) --k;
         if (!k) return s + j - current_block*current_length;
     }
 
     return -1;
 }
 
-int CBlockTree::get_partial_size() {
-    int leaf_string_size = sdsl::size_in_bytes(*leaf_string_);
 
-    int alphabet_size = sdsl::size_in_bytes(*alphabet_);
-    int mapping_size = sizeof(int) * 256;
+int CBitBlockTree::select_0(int k) {
+
+    auto& ranks = bt_ranks_;
+    auto& second_ranks = bt_second_ranks_;
+    auto& first_level_prefix_ranks = bt_first_level_prefix_ranks_;
+
+
+    int current_block = (k-1)/first_level_length_;
+
+    int end_block = (*first_level_prefix_ranks).size()-1;
+    while (current_block != end_block) {
+        int m = current_block + (end_block-current_block)/2;
+        int f = first_level_length_*m - (*first_level_prefix_ranks)[m];
+        if (f < k) {
+            if (end_block - current_block == 1) {
+                if ((first_level_length_*(m+1) - (*first_level_prefix_ranks)[m+1]) < k) {
+                    current_block = m+1;
+                }
+                break;
+            }
+            current_block = m;
+        } else {
+            end_block = m-1;
+        }
+    }
+
+
+    int current_length = first_level_length_;
+    int s = current_block*current_length;
+    k -= s - (*first_level_prefix_ranks)[current_block];
+    int level = 0;
+    while (level < number_of_levels_-1) {
+        if ((*bt_bv_[level])[current_block]) { // Case InternalBlock
+            int firstChild = (*bt_bv_rank_[level])(current_block)*r_;
+            int child = firstChild;
+            int child_length = current_length/r_;
+            int r = child_length - (*ranks[level+1])[child];
+            int last_possible_child = (firstChild + r_-1 > (*ranks[level+1]).size()-1) ?  (*ranks[level+1]).size()-1 : firstChild + r_-1;
+            while ( child < last_possible_child && k > r) {
+                ++child;
+                r+= child_length - (*ranks[level+1])[child];
+            }
+            k -= r - (child_length - (*ranks[level+1])[child]);
+            current_length = child_length;
+            s += (child-firstChild)*current_length;
+            current_block = child;
+            ++level;
+        } else { // Case BackBlock
+            int index = current_block -  (*bt_bv_rank_[level])(current_block+1);
+            int encoded_offset = (*bt_offsets_[level])[index];
+            current_block = encoded_offset/current_length;
+
+            k -= (current_length - encoded_offset%current_length) - (*second_ranks[level])[index];
+            s -= encoded_offset%current_length;
+            if (k > 0) {
+                s += current_length;
+                ++current_block;
+            } else {
+                k += current_length - (*ranks[level])[current_block];
+            }
+
+        }
+    }
+
+    for (int j = current_block*current_length;  ; ++j) {
+        if ((*leaf_bv_)[j] != 1) --k;
+        if (!k) return s + j - current_block*current_length;
+    }
+
+    return -1;
+}
+
+
+int CBitBlockTree::get_partial_size() {
+    int leaf_bv_size = sdsl::size_in_bytes(*leaf_bv_);
 
     int bt_bv_size = sizeof(void*);
     for (sdsl::bit_vector* bv : bt_bv_) {
@@ -349,34 +398,23 @@ int CBlockTree::get_partial_size() {
         bt_offsets_size += sdsl::size_in_bytes(*offsets);
     }
 
-    return  mapping_size + alphabet_size + bt_bv_size+ bt_bv_rank_size+ bt_offsets_size + leaf_string_size;
+    return bt_bv_size+ bt_bv_rank_size+ bt_offsets_size+ leaf_bv_size;
 }
 
 
-int CBlockTree::size() {
+int CBitBlockTree::size() {
 
-    int bt_ranks_total_size = (bt_ranks_.size()+1) * sizeof(void*);
-    for (auto pair: bt_ranks_) {
-        int size = 0;
-        for (sdsl::int_vector<>* ranks: pair.second) {
-            size += sdsl::size_in_bytes(*ranks);
-        }
-        bt_ranks_total_size += size;
+    int bt_ranks_total_size = sizeof(void*);
+    for (auto ranks: bt_ranks_) {
+        bt_ranks_total_size += sdsl::size_in_bytes(*ranks);
     }
 
 
-    int bt_prefix_ranks_first_level_size = 0;
-    for (auto pair: bt_first_level_prefix_ranks_) {
-        bt_prefix_ranks_first_level_size += sdsl::size_in_bytes(*(pair.second));
-    }
+    int bt_prefix_ranks_first_level_size = sdsl::size_in_bytes(*(bt_first_level_prefix_ranks_));
 
-    int bt_second_ranks_total_size = (bt_second_ranks_.size()+1) * sizeof(void*);
-    for (auto pair: bt_second_ranks_) {
-        int size = 0;
-        for (sdsl::int_vector<>* ranks: pair.second) {
-            size += sdsl::size_in_bytes(*ranks);
-        }
-        bt_second_ranks_total_size += size;
+    int bt_second_ranks_total_size = sizeof(void*);
+    for (auto ranks: bt_second_ranks_) {
+        bt_second_ranks_total_size += sdsl::size_in_bytes(*ranks);
     }
 
     int partial_total_size = get_partial_size();
