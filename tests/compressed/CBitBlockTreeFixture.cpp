@@ -60,7 +60,6 @@ protected:
         for (char c: input_)
             characters.insert(c);
         for (int c: characters) {
-            characters_[c] = {};
             block_tree_rs_->add_rank_select_support(c);
         }
 
@@ -70,7 +69,6 @@ protected:
             } else {
                 selects_0.push_back(i);
             }
-            characters_[input_[i]].push_back(i);
         }
 
         c_bit_block_tree_rs_ = new CBitBlockTree(block_tree_rs_, input_[0]);
@@ -87,7 +85,6 @@ public:
     int one_symbol;
     int r_;
     int max_leaf_length_;
-    std::unordered_map<int,std::vector<int>> characters_; // Characters in the input and its select results
     std::vector<int> selects_1;
     std::vector<int> selects_0;
 

@@ -220,9 +220,18 @@ int CBitBlockTree::rank_1(int i) {
         }
     }
 
+    auto& leaf_bv = *leaf_bv_;
+    int chunk = (current_block*current_length)/64;
+    uint64_t chunk_info = *(leaf_bv.m_data + chunk);
+
     i  += current_block*current_length;
     for (int j = current_block*current_length; j <= i; ++j) {
-        if ((*leaf_bv_)[j] == 1) ++r;
+        int value = (chunk_info >> (j%64))%2;
+        if (value == 1) ++r;
+        if ((j + 1)%64 == 0) {
+            ++chunk;
+            chunk_info = *(leaf_bv.m_data + chunk);
+        }
     }
 
     return r;
@@ -297,9 +306,18 @@ int CBitBlockTree::select_1(int k) {
         }
     }
 
-    for (int j = current_block*current_length;  ; ++j) {
-        if ((*leaf_bv_)[j] == 1) --k;
+    auto& leaf_bv = *leaf_bv_;
+    int chunk = (current_block*current_length)/64;
+    uint64_t chunk_info = *(leaf_bv.m_data + chunk);
+
+    for (int j = current_block*current_length; ; ++j) {
+        int value = (chunk_info >> (j%64))%2;
+        if (value == 1) --k;
         if (!k) return s + j - current_block*current_length;
+        if ((j + 1)%64 == 0) {
+            ++chunk;
+            chunk_info = *(leaf_bv.m_data + chunk);
+        }
     }
 
     return -1;
@@ -308,58 +326,59 @@ int CBitBlockTree::select_1(int k) {
 
 int CBitBlockTree::select_0(int k) {
 
-    auto& ranks = bt_ranks_;
-    auto& second_ranks = bt_second_ranks_;
-    auto& first_level_prefix_ranks = bt_first_level_prefix_ranks_;
+    auto &ranks = bt_ranks_;
+    auto &second_ranks = bt_second_ranks_;
+    auto &first_level_prefix_ranks = bt_first_level_prefix_ranks_;
 
 
-    int current_block = (k-1)/first_level_length_;
+    int current_block = (k - 1) / first_level_length_;
 
-    int end_block = (*first_level_prefix_ranks).size()-1;
+    int end_block = (*first_level_prefix_ranks).size() - 1;
     while (current_block != end_block) {
-        int m = current_block + (end_block-current_block)/2;
-        int f = first_level_length_*m - (*first_level_prefix_ranks)[m];
+        int m = current_block + (end_block - current_block) / 2;
+        int f = first_level_length_ * m - (*first_level_prefix_ranks)[m];
         if (f < k) {
             if (end_block - current_block == 1) {
-                if ((first_level_length_*(m+1) - (*first_level_prefix_ranks)[m+1]) < k) {
-                    current_block = m+1;
+                if ((first_level_length_ * (m + 1) - (*first_level_prefix_ranks)[m + 1]) < k) {
+                    current_block = m + 1;
                 }
                 break;
             }
             current_block = m;
         } else {
-            end_block = m-1;
+            end_block = m - 1;
         }
     }
 
 
     int current_length = first_level_length_;
-    int s = current_block*current_length;
+    int s = current_block * current_length;
     k -= s - (*first_level_prefix_ranks)[current_block];
     int level = 0;
-    while (level < number_of_levels_-1) {
+    while (level < number_of_levels_ - 1) {
         if ((*bt_bv_[level])[current_block]) { // Case InternalBlock
-            int firstChild = (*bt_bv_rank_[level])(current_block)*r_;
+            int firstChild = (*bt_bv_rank_[level])(current_block) * r_;
             int child = firstChild;
-            int child_length = current_length/r_;
-            int r = child_length - (*ranks[level+1])[child];
-            int last_possible_child = (firstChild + r_-1 > (*ranks[level+1]).size()-1) ?  (*ranks[level+1]).size()-1 : firstChild + r_-1;
-            while ( child < last_possible_child && k > r) {
+            int child_length = current_length / r_;
+            int r = child_length - (*ranks[level + 1])[child];
+            int last_possible_child = (firstChild + r_ - 1 > (*ranks[level + 1]).size() - 1) ?
+                                      (*ranks[level + 1]).size() - 1 : firstChild + r_ - 1;
+            while (child < last_possible_child && k > r) {
                 ++child;
-                r+= child_length - (*ranks[level+1])[child];
+                r += child_length - (*ranks[level + 1])[child];
             }
-            k -= r - (child_length - (*ranks[level+1])[child]);
+            k -= r - (child_length - (*ranks[level + 1])[child]);
             current_length = child_length;
-            s += (child-firstChild)*current_length;
+            s += (child - firstChild) * current_length;
             current_block = child;
             ++level;
         } else { // Case BackBlock
-            int index = current_block -  (*bt_bv_rank_[level])(current_block+1);
+            int index = current_block - (*bt_bv_rank_[level])(current_block + 1);
             int encoded_offset = (*bt_offsets_[level])[index];
-            current_block = encoded_offset/current_length;
+            current_block = encoded_offset / current_length;
 
-            k -= (current_length - encoded_offset%current_length) - (*second_ranks[level])[index];
-            s -= encoded_offset%current_length;
+            k -= (current_length - encoded_offset % current_length) - (*second_ranks[level])[index];
+            s -= encoded_offset % current_length;
             if (k > 0) {
                 s += current_length;
                 ++current_block;
@@ -370,9 +389,19 @@ int CBitBlockTree::select_0(int k) {
         }
     }
 
-    for (int j = current_block*current_length;  ; ++j) {
-        if ((*leaf_bv_)[j] != 1) --k;
+
+    auto& leaf_bv = *leaf_bv_;
+    int chunk = (current_block*current_length)/64;
+    uint64_t chunk_info = *(leaf_bv.m_data + chunk);
+
+    for (int j = current_block*current_length; ; ++j) {
+        int value = (chunk_info >> (j%64))%2;
+        if (value == 0) --k;
         if (!k) return s + j - current_block*current_length;
+        if ((j + 1)%64 == 0) {
+            ++chunk;
+            chunk_info = *(leaf_bv.m_data + chunk);
+        }
     }
 
     return -1;
