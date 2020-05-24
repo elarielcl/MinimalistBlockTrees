@@ -32,6 +32,7 @@ public:
 
 
     CBlockTree(BlockTree*);
+    CBlockTree(std::istream&);
     virtual ~CBlockTree();
 
     int access(int);
@@ -40,6 +41,7 @@ public:
 
     int size();
     int get_partial_size();
+    void serialize(std::ostream&);
 };
 
 

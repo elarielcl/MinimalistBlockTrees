@@ -21,7 +21,6 @@ public:
     sdsl::bit_vector* leaf_bv_;
 
 
-
     sdsl::int_vector<>* bt_first_level_prefix_ranks_;
 
     std::vector<sdsl::int_vector<>*> bt_ranks_;
@@ -29,6 +28,7 @@ public:
 
 
     CBitBlockTree(BlockTree*, int);
+    CBitBlockTree(std::istream&);
     virtual ~CBitBlockTree();
 
     int access(int);
@@ -39,6 +39,7 @@ public:
 
     int size();
     int get_partial_size();
+    void serialize(std::ostream&);
 };
 
 

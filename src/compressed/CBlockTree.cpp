@@ -138,11 +138,62 @@ CBlockTree::CBlockTree(BlockTree * bt) : r_(bt->r_) {
 
     leaf_string_ = new sdsl::int_vector<>(leaf_string.size());
 
-    for (int i = 0; i<leaf_string_->size(); ++i) {
+    for (int i = 0; i<(*leaf_string_).size(); ++i) {
         (*leaf_string_)[i] = mapping_[leaf_string[i]];
     }
 
     sdsl::util::bit_compress(*leaf_string_);
+}
+
+CBlockTree::CBlockTree(std::istream& in) {
+    in.read((char *) &r_, sizeof(int));
+    in.read((char *) &first_level_length_, sizeof(int));
+    in.read((char *) &number_of_levels_, sizeof(int));
+
+    for (int i = 0; i < number_of_levels_-1; ++i) {
+        bt_bv_.push_back(new sdsl::bit_vector());
+        (*bt_bv_[i]).load(in);
+    }
+
+    for (sdsl::bit_vector* bv : bt_bv_) {
+        bt_bv_rank_.push_back(new sdsl::rank_support_v<1>(bv));
+    }
+
+    for (int i = 0; i < number_of_levels_-1; ++i) {
+        bt_offsets_.push_back(new sdsl::int_vector<>());
+        (*bt_offsets_[i]).load(in);
+    }
+
+    leaf_string_ = new sdsl::int_vector<>();
+    (*leaf_string_).load(in);
+
+    alphabet_ = new sdsl::int_vector<>();
+    (*alphabet_).load(in);
+
+    int c = 0;
+    for (int character : (*alphabet_)) {
+        mapping_[character] = c++;
+    }
+
+    for (int character : (*alphabet_)) {
+        bt_first_level_prefix_ranks_[character] = new sdsl::int_vector<>();
+        (*bt_first_level_prefix_ranks_[character]).load(in);
+    }
+
+    for (int character : (*alphabet_)) {
+        for (int i = 0; i < number_of_levels_; ++i) {
+            bt_ranks_[character].push_back(new sdsl::int_vector<>());
+            (*bt_ranks_[character][i]).load(in);
+        }
+    }
+
+    for (int character : (*alphabet_)) {
+        for (int i = 0; i < number_of_levels_-1; ++i) {
+            bt_second_ranks_[character].push_back(new sdsl::int_vector<>());
+            (*bt_second_ranks_[character][i]).load(in);
+        }
+    }
+
 }
 
 CBlockTree::~CBlockTree() {
@@ -328,6 +379,8 @@ int CBlockTree::select(int c, int k) {
 }
 
 int CBlockTree::get_partial_size() {
+    int fields = sizeof(int) * 3;
+
     int leaf_string_size = sdsl::size_in_bytes(*leaf_string_);
 
     int alphabet_size = sdsl::size_in_bytes(*alphabet_);
@@ -349,7 +402,7 @@ int CBlockTree::get_partial_size() {
         bt_offsets_size += sdsl::size_in_bytes(*offsets);
     }
 
-    return  mapping_size + alphabet_size + bt_bv_size+ bt_bv_rank_size+ bt_offsets_size + leaf_string_size;
+    return  fields + mapping_size + alphabet_size + bt_bv_size+ bt_bv_rank_size+ bt_offsets_size + leaf_string_size;
 }
 
 
@@ -382,4 +435,40 @@ int CBlockTree::size() {
     int partial_total_size = get_partial_size();
     int rank_size = bt_second_ranks_total_size + bt_ranks_total_size + bt_prefix_ranks_first_level_size;
     return rank_size + partial_total_size;
+}
+
+
+void CBlockTree::serialize(std::ostream& out) {
+
+    out.write((char *) &r_, sizeof(int));
+    out.write((char *) &first_level_length_, sizeof(int));
+    out.write((char *) &number_of_levels_, sizeof(int));
+
+    for (sdsl::bit_vector* bv : bt_bv_) {
+        (*bv).serialize(out);
+    }
+
+    for (sdsl::int_vector<>* offsets : bt_offsets_) {
+        (*offsets).serialize(out);
+    }
+
+    (*leaf_string_).serialize(out);
+
+    (*alphabet_).serialize(out);
+
+    for (int character: (*alphabet_)) {
+        (*bt_first_level_prefix_ranks_[character]).serialize(out);
+    }
+
+    for (int character: (*alphabet_)) {
+        for (sdsl::int_vector<>* ranks: bt_ranks_[character]) {
+            (*ranks).serialize(out);
+        }
+    }
+
+    for (int character: (*alphabet_)) {
+        for (sdsl::int_vector<>* second_ranks: bt_second_ranks_[character]) {
+            (*second_ranks).serialize(out);
+        }
+    }
 }

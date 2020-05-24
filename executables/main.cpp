@@ -1,5 +1,5 @@
 #include <pointer_based/BlockTree.h>
-#include <compressed/CBlockTree.h>
+#include <compressed/CBitBlockTree.h>
 
 #include <vector>
 #include <unordered_map>
@@ -9,7 +9,7 @@
 int main() {
 
     std::string input;
-    std::ifstream t("/home/elarielcl/test/BlockTrees/einstein");
+    std::ifstream t("../../tests/data/dna.par");
     std::stringstream buffer;
     buffer << t.rdbuf();
     input = buffer.str();
@@ -27,12 +27,21 @@ int main() {
         bt->add_rank_select_support(c);
 
 
-    CBlockTree* cbt = new CBlockTree(bt);
+    CBitBlockTree* cbt = new CBitBlockTree(bt, input[0]);
     cbt->access(0);
-    std::cout << cbt->rank(input[100],100) << std::endl;
+    std::cout << cbt->rank_1(10) << std::endl;
+
+    std::ofstream ot("dna.par.bt");
+    cbt->serialize(ot);
+    ot.close();
+    std::ifstream it("dna.par.bt");
+    CBitBlockTree* lcbt = new CBitBlockTree(it);
+    lcbt->access(0);
+    std::cout << lcbt->rank_1(10) << std::endl;
 
     delete bt;
     delete cbt;
+    delete lcbt;
     return 0;
 }
 
