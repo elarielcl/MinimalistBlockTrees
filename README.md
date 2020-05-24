@@ -1,5 +1,5 @@
 # Description
-This repository contains an implementation for the BlockTree data structure described [here](https://ieeexplore.ieee.org/document/7149265). Details of the implementation follow the experimental studies conducted in my MSc. thesis available [here](https://users.dcc.uchile.cl/~gnavarro/mem/algoritmos/tesisManuel.pdf) .
+This repository contains an implementation for the BlockTree data structure described [here](https://ieeexplore.ieee.org/document/7149265). Details of the implementation follow the experimental studies conducted in my MSc. thesis available [here](https://users.dcc.uchile.cl/~gnavarro/mem/algoritmos/tesisManuel.pdf). This repositorie contains only the cannonical BlockTree version. If you want to play with the software used in this experimental study, it is available in the repo [https://github.com/elarielcl/BlockTrees](https://github.com/elarielcl/BlockTrees)
 # Installation Guide
 First clone the repo with its submodule:
 ```
