@@ -70,7 +70,7 @@ set(project_EXECUTABLES
  ...
  ```
  
- ... and never forget to delet your trash ;)
+ ... and never forget to delete your trash ;)
  ```
  ...
  delete bt;
