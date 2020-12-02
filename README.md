@@ -9,7 +9,7 @@ First clone the repo:
 This project is a CMake project. To build this project with some runnables you should do
 
 ```
-cd ../..
+cd MinimalistBlockTrees
 mkdir build
 cd build
 cmake ..
