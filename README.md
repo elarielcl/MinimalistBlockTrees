@@ -13,6 +13,7 @@ cd ../..
 mkdir build
 cd build
 cmake ..
+cmake .. # Issue: second cmake necessary to compile sdsl
 make
 ```
 
