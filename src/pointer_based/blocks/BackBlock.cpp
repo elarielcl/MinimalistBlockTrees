@@ -69,3 +69,22 @@ int BackBlock::number_of_leaves() {
 int BackBlock::number_of_back_nodes() {
     return 1;
 }
+
+
+int BackBlock::longest_back_nodes_chain_length() {
+    int longest_previous_block_chain_length = -1;
+    if (first_block_ != nullptr) {
+        int longest_first_block_chain_length = first_block_->longest_back_nodes_chain_length();
+        if (longest_first_block_chain_length > longest_previous_block_chain_length)
+            longest_previous_block_chain_length = longest_first_block_chain_length;
+    }
+    if (second_block_ != nullptr) {
+        int longest_second_block_chain_length = second_block_->longest_back_nodes_chain_length();
+        if (longest_second_block_chain_length > longest_previous_block_chain_length)
+            longest_previous_block_chain_length = longest_second_block_chain_length;
+    }
+
+    if (longest_previous_block_chain_length == -1) return -1;
+
+    return 1 + longest_previous_block_chain_length;
+}

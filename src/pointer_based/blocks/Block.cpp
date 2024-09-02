@@ -78,6 +78,11 @@ int Block::number_of_back_nodes() {
 }
 
 
+int Block::longest_back_nodes_chain_length() {
+    return -1;
+}
+
+
 void Block::replace_child(Block* old_child, Block* new_child) {
     for (int i = 0; i < children_.size(); ++i) {
         if (children_[i] == old_child) {

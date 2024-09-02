@@ -27,10 +27,12 @@ int main() {
     std::cout << bt->number_of_nodes() << std::endl;
     std::cout << bt->number_of_leaves() << std::endl;
     std::cout << bt->number_of_back_nodes() << std::endl;
+    std::cout << bt->longest_back_nodes_chain_length() << std::endl;
 
     int number_of_leaves = 0;
     bt->info_access(92233,number_of_leaves);
     std::cout << number_of_leaves << std::endl;
+
 
 
     for (char c: characters)

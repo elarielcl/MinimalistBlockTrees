@@ -90,6 +90,9 @@ If `bt` is a `BlockTree*` then you can use the following methods to get some inf
 bt->number_of_nodes(); // Returns the number of nodes in the BlockTree
 bt->number_of_leaves(); // Returns the number of leaves (LeafBlocks+BackBlocks) in the BlockTree
 bt->number_of_back_nodes(); // Returns the number of back nodes (BackBlocks) in the BlockTree
+bt->longest_back_nodes_chain_length(); // Returns the maximum number of back nodes visited in a traversal of the 
+                                       // BlockTree this is an upper bound for the maximum number of back nodes visited
+                                       // in any access query
 int number_of_leaves = 0;
 bt->info_access(i, number_of_leaves); // Returns the character at position i. 
                                       // Additionally, adds the number of leaves (1 LeafBlock + some BackBlocks) 

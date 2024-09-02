@@ -97,6 +97,11 @@ int BlockTree::number_of_back_nodes() {
 }
 
 
+int BlockTree::longest_back_nodes_chain_length() {
+    return root_block_->longest_back_nodes_chain_length();
+}
+
+
 std::vector<Block*> BlockTree::next_level(std::vector<Block*>& level) {
     std::vector<Block*> next_level;
     for (int i = 0; i < level.size(); ++i) {

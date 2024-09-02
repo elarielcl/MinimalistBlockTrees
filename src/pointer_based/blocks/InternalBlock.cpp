@@ -148,3 +148,14 @@ int InternalBlock::number_of_back_nodes() {
         back_nodes += child->number_of_back_nodes();
     return back_nodes;
 }
+
+
+int InternalBlock::longest_back_nodes_chain_length() {
+    int longest_chain_length = -1;
+    for (Block* child: children_) {
+        int longest_child_chain_length = child->longest_back_nodes_chain_length();
+        if (longest_child_chain_length > longest_chain_length)
+            longest_chain_length = longest_child_chain_length;
+    }
+    return longest_chain_length;
+}

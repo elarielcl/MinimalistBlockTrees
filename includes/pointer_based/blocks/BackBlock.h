@@ -19,6 +19,7 @@ public:
     int number_of_nodes();
     int number_of_leaves();
     int number_of_back_nodes();
+    int longest_back_nodes_chain_length();
 };
 
 #endif //BLOCKTREE_PBACKBLOCK_H

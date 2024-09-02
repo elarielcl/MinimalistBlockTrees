@@ -61,3 +61,8 @@ int LeafBlock::number_of_leaves() {
 int LeafBlock::number_of_back_nodes() {
     return 0;
 }
+
+
+int LeafBlock::longest_back_nodes_chain_length() {
+    return 0;
+}
