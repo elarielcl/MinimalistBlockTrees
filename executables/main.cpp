@@ -23,6 +23,16 @@ int main() {
     BlockTree* bt = new BlockTree(input, 2, 32);
     bt->process_back_pointers();
     bt->clean_unnecessary_expansions();
+
+    std::cout << bt->number_of_nodes() << std::endl;
+    std::cout << bt->number_of_leaves() << std::endl;
+    std::cout << bt->number_of_back_nodes() << std::endl;
+
+    int number_of_leaves = 0;
+    bt->info_access(92233,number_of_leaves);
+    std::cout << number_of_leaves << std::endl;
+
+
     for (char c: characters)
         bt->add_rank_select_support(c);
 

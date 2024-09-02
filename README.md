@@ -80,6 +80,23 @@ set(project_EXECUTABLES
  delete cbbt;
  ...
  ```
+
+## Extra info methods
+
+If `bt` is a `BlockTree*` then you can use the following methods to get some info of the BlockTree
+
+```
+...
+bt->number_of_nodes(); // Returns the number of nodes in the BlockTree
+bt->number_of_leaves(); // Returns the number of leaves (LeafBlocks+BackBlocks) in the BlockTree
+bt->number_of_back_nodes(); // Returns the number of back nodes (BackBlocks) in the BlockTree
+int number_of_leaves = 0;
+bt->info_access(i, number_of_leaves); // Returns the character at position i. 
+                                      // Additionally, adds the number of leaves (1 LeafBlock + some BackBlocks) 
+                                      // visited during the traversal to the variable given as second argument
+std::cout << number_of_leaves << std::endl;
+...
+```
  
  # Contact
  Any error, improvement or suggestion you can write me to `elarielcl` at Gmail. 

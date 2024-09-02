@@ -23,9 +23,14 @@ public:
 
 
     int access(int);
+    int info_access(int, int&);
     void add_rank_select_support(int);
     int rank(int, int);
     int select(int, int);
+
+    int number_of_nodes();
+    int number_of_leaves();
+    int number_of_back_nodes();
 
     void process_back_pointers_heuristic();
     void process_back_pointers();

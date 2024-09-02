@@ -14,7 +14,12 @@ public:
 
     bool is_leaf();
     int access(int);
+    int info_access(int, int&);
     int add_rank_select_support(int);
+
+    int number_of_nodes();
+    int number_of_leaves();
+    int number_of_back_nodes();
 
     int rank(int, int);
     int select(int, int);

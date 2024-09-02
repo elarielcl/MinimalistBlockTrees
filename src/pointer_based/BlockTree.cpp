@@ -77,6 +77,25 @@ int BlockTree::access(int i) {
     return root_block_->access(i);
 }
 
+int BlockTree::info_access(int i, int& number_of_leaves) {
+    return root_block_->info_access(i, number_of_leaves);
+}
+
+
+int BlockTree::number_of_nodes() {
+    return root_block_->number_of_nodes();
+}
+
+
+int BlockTree::number_of_leaves() {
+    return root_block_->number_of_leaves();
+}
+
+
+int BlockTree::number_of_back_nodes() {
+    return root_block_->number_of_back_nodes();
+}
+
 
 std::vector<Block*> BlockTree::next_level(std::vector<Block*>& level) {
     std::vector<Block*> next_level;

@@ -40,3 +40,24 @@ int LeafBlock::select(int c, int j) {
 int LeafBlock::access(int i) {
     return source_[start_index_+i];
 }
+
+
+int LeafBlock::info_access(int i, int& number_of_leaves) {
+    number_of_leaves += 1;
+    return source_[start_index_+i];
+}
+
+
+int LeafBlock::number_of_nodes() {
+    return 1;
+}
+
+
+int LeafBlock::number_of_leaves() {
+    return 1;
+}
+
+
+int LeafBlock::number_of_back_nodes() {
+    return 0;
+}

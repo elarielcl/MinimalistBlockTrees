@@ -114,3 +114,37 @@ int InternalBlock::access(int i) {
     }
     return -1;
 }
+
+
+int InternalBlock::info_access(int i, int& number_of_leaves) {
+    int cumulative_length = 0;
+    for (Block* child: children_) {
+        cumulative_length += child->length();
+        if (i < cumulative_length) return child->info_access(i-(cumulative_length-child->length()), number_of_leaves);
+    }
+    return -1;
+}
+
+
+int InternalBlock::number_of_nodes() {
+    int nodes = 1;
+    for (Block* child: children_)
+        nodes += child->number_of_nodes();
+    return nodes;
+}
+
+
+int InternalBlock::number_of_leaves() {
+    int leaves = 0;
+    for (Block* child: children_)
+        leaves += child->number_of_leaves();
+    return leaves;
+}
+
+
+int InternalBlock::number_of_back_nodes() {
+    int back_nodes = 0;
+    for (Block* child: children_)
+        back_nodes += child->number_of_back_nodes();
+    return back_nodes;
+}

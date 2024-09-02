@@ -47,3 +47,25 @@ int BackBlock::access(int i) {
     if (i + offset_ >= first_block_->length()) return second_block_->access(offset_+i-first_block_->length());
     return first_block_->access(i+offset_);
 }
+
+
+int BackBlock::info_access(int i, int& number_of_leaves) {
+    number_of_leaves += 1;
+    if (i + offset_ >= first_block_->length()) return second_block_->info_access(offset_+i-first_block_->length(), number_of_leaves);
+    return first_block_->info_access(i+offset_, number_of_leaves);
+}
+
+
+int BackBlock::number_of_nodes() {
+    return 1;
+}
+
+
+int BackBlock::number_of_leaves() {
+    return 1;
+}
+
+
+int BackBlock::number_of_back_nodes() {
+    return 1;
+}

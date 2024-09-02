@@ -16,6 +16,11 @@ public:
     int select(int, int);
 
     int access(int);
+    int info_access(int, int&);
+
+    int number_of_nodes();
+    int number_of_leaves();
+    int number_of_back_nodes();
 };
 
 #endif //BLOCKTREE_PLEAVEBLOCK_H

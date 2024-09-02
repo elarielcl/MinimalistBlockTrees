@@ -57,6 +57,27 @@ int Block::access(int i) {
     return -1;
 }
 
+
+int Block::info_access(int i, int& number_of_leaves) {
+    return -1;
+}
+
+
+int Block::number_of_nodes() {
+    return -1;
+}
+
+
+int Block::number_of_leaves() {
+    return -1;
+}
+
+
+int Block::number_of_back_nodes() {
+    return -1;
+}
+
+
 void Block::replace_child(Block* old_child, Block* new_child) {
     for (int i = 0; i < children_.size(); ++i) {
         if (children_[i] == old_child) {

@@ -37,8 +37,13 @@ public:
     virtual int add_rank_select_support(int);
 
     virtual int access(int);
+    virtual int info_access(int, int&);
     virtual int rank(int, int);
     virtual int select(int, int);
+
+    virtual int number_of_nodes();
+    virtual int number_of_leaves();
+    virtual int number_of_back_nodes();
 
     virtual std::vector<Block*>& children(int, int);
     virtual void clean_unnecessary_expansions();
